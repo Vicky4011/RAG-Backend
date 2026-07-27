@@ -1,8 +1,6 @@
 package com.vignesh.ragbackend.controller;
 
-import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
+import com.vignesh.ragbackend.service.PdfService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,23 +12,19 @@ import java.io.IOException;
 public class UploadController {
 
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadPdf(
-            @RequestParam("file") MultipartFile file
-    ) throws IOException {
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        try {
+            PdfService pdfService=new PdfService();
 
-        PDDocument document = Loader.loadPDF(file.getBytes());
+            String text = pdfService.readPdf(file);
+            System.out.println(text);
 
-        PDFTextStripper stripper = new PDFTextStripper();
+            return ResponseEntity.ok("PDF Stored Successfully");
 
-        String text = stripper.getText(document);
+        } catch (IOException e) {
 
-        document.close();
+            return ResponseEntity.badRequest().body("Error Reading PDF");
 
-        System.out.println("=================================");
-        System.out.println("PDF TEXT");
-        System.out.println("=================================");
-        System.out.println(text);
-
-        return ResponseEntity.ok("PDF Read Successfully");
+        }
     }
-}
+    }
