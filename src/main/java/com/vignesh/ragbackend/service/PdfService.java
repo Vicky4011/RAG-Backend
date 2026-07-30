@@ -30,4 +30,27 @@ public class PdfService {
         return pdfText;
     }
 
+    public String askQuestion(String question) {
+
+
+        if (pdfText == null || pdfText.isEmpty()) {
+            return "No PDF uploaded.";
+        }
+
+        question = question.toLowerCase();
+
+        String[] lines = pdfText.split("\n");
+
+        for (String line : lines) {
+
+            if (line.toLowerCase().contains(question)) {
+                return line;
+            }
+
+        }
+
+        return "Answer not found in PDF.";
+
+    }
+
 }
