@@ -5,6 +5,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.IOException;
 
@@ -12,6 +13,9 @@ import java.io.IOException;
 public class PdfService {
 
     private String pdfText = "";
+
+    @Autowired
+    private GeminiService geminiService;
 
     public String readPdf(MultipartFile file) throws IOException {
 
@@ -26,31 +30,19 @@ public class PdfService {
         return pdfText;
     }
 
-    public String getPdfText() {
-        return pdfText;
-    }
-
     public String askQuestion(String question) {
 
-
-        if (pdfText == null || pdfText.isEmpty()) {
+        if (pdfText == null || pdfText.isBlank()) {
             return "No PDF uploaded.";
         }
 
-        question = question.toLowerCase();
-
-        String[] lines = pdfText.split("\n");
-
-        for (String line : lines) {
-
-            if (line.toLowerCase().contains(question)) {
-                return line;
-            }
-
+        try {
+            return geminiService.askGemini(pdfText, question);
         }
-
-        return "Answer not found in PDF.";
-
+        catch (Exception e) {
+            e.printStackTrace();
+            return "Error while communicating with Gemini.";
+        }
     }
 
 }
