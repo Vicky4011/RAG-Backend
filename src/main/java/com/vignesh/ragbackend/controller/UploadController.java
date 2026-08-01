@@ -19,7 +19,6 @@ public class UploadController {
         try {
 
             String text = pdfService.readPdf(file);
-            System.out.println(text);
 
             return ResponseEntity.ok("PDF Stored Successfully");
 
