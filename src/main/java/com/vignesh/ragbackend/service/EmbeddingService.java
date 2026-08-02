@@ -26,6 +26,13 @@ public class EmbeddingService {
                 Map.class
         );
 
-        return (List<Double>) response.get("embedding");
+        System.out.println("Ollama Response:");
+        System.out.println(response);
+
+        List<Double> embedding = (List<Double>) response.get("embedding");
+
+        System.out.println("Embedding Size = " + embedding.size());
+
+        return embedding;
     }
 }

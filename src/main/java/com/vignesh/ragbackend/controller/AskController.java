@@ -1,26 +1,19 @@
 package com.vignesh.ragbackend.controller;
 
-import com.vignesh.ragbackend.service.PdfService;
-import org.springframework.http.ResponseEntity;
+import com.vignesh.ragbackend.service.RagService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api")
 public class AskController {
 
-    private final PdfService pdfService;
-
-    public AskController(PdfService pdfService) {
-        this.pdfService = pdfService;
-    }
+    @Autowired
+    private RagService ragService;
 
     @GetMapping("/ask")
-    public ResponseEntity<String> askQuestion(
-            @RequestParam String question) {
+    public String askQuestion(@RequestParam String question) {
 
-        String answer = pdfService.askQuestion(question);
-
-        return ResponseEntity.ok(answer);
-
+        return ragService.askQuestion(question);
     }
 }

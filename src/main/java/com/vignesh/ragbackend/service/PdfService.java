@@ -33,19 +33,29 @@ public class PdfService {
 
         pdfText = stripper.getText(document);
 
-        pdfChunks = textChunkService.splitIntoChunks(pdfText);
+        List<String> rawChunks = textChunkService.splitIntoChunks(pdfText);
 
-        embeddings.clear();
+        pdfChunks = new ArrayList<>();
+        embeddings = new ArrayList<>();
 
-        for (String chunk : pdfChunks) {
+        for (String chunk : rawChunks) {
+
+            if (chunk == null || chunk.isBlank()) {
+                System.out.println("Skipping blank chunk.");
+                continue;
+            }
 
             List<Double> embedding = embeddingService.generateEmbedding(chunk);
 
-            embeddings.add(embedding);
+            System.out.println("Chunk Embedding Size = " + embedding.size());
 
-            System.out.println("--------------------------------");
-            System.out.println(chunk);
-            System.out.println("Embedding Size : " + embedding.size());
+            if (embedding.isEmpty()) {
+                System.out.println("ERROR: Empty embedding generated! Skipping this chunk.");
+                continue;
+            }
+
+            pdfChunks.add(chunk);
+            embeddings.add(embedding);
         }
 
         System.out.println("==================================");
@@ -68,6 +78,10 @@ public class PdfService {
 
     public List<String> getPdfChunks() {
         return pdfChunks;
+    }
+
+    public List<List<Double>> getEmbeddings() {
+        return embeddings;
     }
 
     public String askQuestion(String question) {
