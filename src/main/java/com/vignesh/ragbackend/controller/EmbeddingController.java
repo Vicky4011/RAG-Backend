@@ -17,7 +17,6 @@ public class EmbeddingController {
 
     @GetMapping("/embedding")
     public List<Double> embedding() {
-
         return embeddingService.generateEmbedding(
                 "Java is a programming language."
         );
