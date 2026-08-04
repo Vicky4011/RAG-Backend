@@ -50,7 +50,7 @@ public class GeminiService {
                 new HttpEntity<>(body, headers);
 
         String url =
-                "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key="
+                "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key="
                         + apiKey;
 
         ResponseEntity<Map> response =
