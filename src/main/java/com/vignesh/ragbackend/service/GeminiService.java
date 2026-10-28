@@ -46,19 +46,30 @@ public class GeminiService {
         long totalStartTime = System.currentTimeMillis();
 
         String prompt = """
-                You are a helpful AI assistant.
+        You are a helpful AI assistant that answers questions
+        about an uploaded PDF.
 
-                Answer the user's question ONLY using the context below.
+        RULES:
+        1. Answer using only the information in the supplied context.
+        2. Read all the supplied context before answering.
+        3. Combine relevant information from different sections
+           when necessary.
+        4. Understand the user's intended meaning, even if the
+           question contains spelling or grammar mistakes.
+        5. If the answer is partially available, provide the
+           available information and clearly mention what is missing.
+        6. If the answer genuinely cannot be found in the context,
+           reply exactly:
+           "Answer not found in the PDF."
+        7. Do not invent facts or assume information that is
+           not supported by the PDF.
 
-                If the answer is not present in the context, reply:
-                "Answer not found in the PDF."
+        PDF CONTEXT:
+        %s
 
-                Context:
-                %s
-
-                Question:
-                %s
-                """.formatted(context, question);
+        USER QUESTION:
+        %s
+        """.formatted(context, question);
 
         Map<String, Object> body = Map.of(
                 "contents", List.of(
