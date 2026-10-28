@@ -6,6 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
@@ -19,15 +20,30 @@ public class GeminiService {
     @Value("${gemini.api.key}")
     private String apiKey;
 
-    @Value("${gemini.model}")
+    @Value("${gemini.model:gemini-flash-latest}")
     private String model;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-
-    private static final int MAX_ATTEMPTS = 4;
+    private static final int MAX_ATTEMPTS = 3;
     private static final long INITIAL_DELAY_MS = 1000;
 
+    private final RestTemplate restTemplate = createRestTemplate();
+
+    private RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory factory =
+                new SimpleClientHttpRequestFactory();
+
+        // Maximum time to establish a connection.
+        factory.setConnectTimeout(10_000);
+
+        // Maximum time to wait for response data.
+        factory.setReadTimeout(30_000);
+
+        return new RestTemplate(factory);
+    }
+
     public String askGemini(String context, String question) {
+
+        long totalStartTime = System.currentTimeMillis();
 
         String prompt = """
                 You are a helpful AI assistant.
@@ -63,9 +79,17 @@ public class GeminiService {
 
         String url =
                 "https://generativelanguage.googleapis.com/v1beta/models/"
-                        + model + ":generateContent";
+                        + model
+                        + ":generateContent";
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+
+            long requestStartTime = System.currentTimeMillis();
+
+            System.out.println(
+                    "Sending Gemini request. Attempt "
+                            + attempt + "/" + MAX_ATTEMPTS
+            );
 
             try {
                 ResponseEntity<Map> response = restTemplate.exchange(
@@ -73,6 +97,14 @@ public class GeminiService {
                         HttpMethod.POST,
                         request,
                         Map.class
+                );
+
+                long requestDuration =
+                        System.currentTimeMillis() - requestStartTime;
+
+                System.out.println(
+                        "Gemini response received in "
+                                + requestDuration + " ms"
                 );
 
                 Map responseBody = response.getBody();
@@ -88,7 +120,7 @@ public class GeminiService {
 
                 if (candidates == null || candidates.isEmpty()) {
                     throw new IllegalStateException(
-                            "Gemini returned no answer. Check the API response."
+                            "Gemini returned no answer."
                     );
                 }
 
@@ -109,70 +141,106 @@ public class GeminiService {
                     );
                 }
 
-                Map part = (Map) parts.get(0);
-                Object text = part.get("text");
+                for (Object item : parts) {
+                    if (item instanceof Map part
+                            && part.get("text") instanceof String text
+                            && !text.isBlank()) {
 
-                if (text == null) {
-                    throw new IllegalStateException(
-                            "Gemini response did not contain answer text."
-                    );
+                        System.out.println(
+                                "Gemini request completed successfully in "
+                                        + (System.currentTimeMillis()
+                                        - totalStartTime)
+                                        + " ms total."
+                        );
+
+                        return text;
+                    }
                 }
 
-                return text.toString();
+                throw new IllegalStateException(
+                        "Gemini returned no text in its response."
+                );
 
             } catch (HttpStatusCodeException e) {
 
                 int status = e.getStatusCode().value();
 
                 boolean retryable =
-                        status == 429 ||
-                                status == 500 ||
-                                status == 502 ||
-                                status == 503 ||
-                                status == 504;
+                        status == 429
+                                || status == 500
+                                || status == 502
+                                || status == 503
+                                || status == 504;
 
-                if (!retryable) {
+                System.err.println(
+                        "Gemini returned HTTP "
+                                + status
+                                + " on attempt "
+                                + attempt
+                                + "."
+                );
+
+                if (!retryable || attempt == MAX_ATTEMPTS) {
+                    System.err.println(
+                            "Gemini request failed. Total elapsed time: "
+                                    + (System.currentTimeMillis()
+                                    - totalStartTime)
+                                    + " ms."
+                    );
+
                     throw new IllegalStateException(
                             "Gemini API request failed with HTTP "
                                     + status
-                                    + ". Check your API key, model, and request configuration.",
+                                    + ". Please try again shortly.",
                             e
                     );
                 }
+
+                long delay =
+                        INITIAL_DELAY_MS * (1L << (attempt - 1));
+
+                System.err.println(
+                        "Retrying Gemini in " + delay + " ms."
+                );
+
+                sleepBeforeRetry(delay);
+
+            } catch (org.springframework.web.client.ResourceAccessException e) {
+
+                System.err.println(
+                        "Gemini connection or response timed out on attempt "
+                                + attempt + "."
+                );
 
                 if (attempt == MAX_ATTEMPTS) {
                     throw new IllegalStateException(
-                            "Gemini is temporarily unavailable after "
-                                    + MAX_ATTEMPTS
-                                    + " attempts. Please try again shortly.",
+                            "Gemini did not respond in time. Please try again.",
                             e
                     );
                 }
 
-                long delay = INITIAL_DELAY_MS * (1L << (attempt - 1));
+                long delay =
+                        INITIAL_DELAY_MS * (1L << (attempt - 1));
 
-                System.err.println(
-                        "Gemini returned HTTP " + status
-                                + ". Retry " + (attempt + 1)
-                                + " of " + MAX_ATTEMPTS
-                                + " in " + delay + " ms."
-                );
-
-                try {
-                    Thread.sleep(delay);
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-
-                    throw new IllegalStateException(
-                            "Gemini retry was interrupted.",
-                            interrupted
-                    );
-                }
+                sleepBeforeRetry(delay);
             }
         }
 
         throw new IllegalStateException(
                 "Unable to get a response from Gemini."
         );
+    }
+
+    private void sleepBeforeRetry(long delay) {
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+
+            throw new IllegalStateException(
+                    "Gemini retry was interrupted.",
+                    e
+            );
+        }
     }
 }
