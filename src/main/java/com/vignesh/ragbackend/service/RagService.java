@@ -1,25 +1,25 @@
 package com.vignesh.ragbackend.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.io.IOException;
 
 @Service
 public class RagService {
 
-    @Autowired
-    private RetrieverService retrieverService;
+    private final PdfService pdfService;
 
-    @Autowired
-    private GeminiService geminiService;
+    public RagService(PdfService pdfService) {
+        this.pdfService = pdfService;
+    }
 
     public String askQuestion(String question) {
+        return pdfService.askQuestion(question);
+    }
 
-        List<String> relevantChunks = retrieverService.retrieveRelevantChunks(question);
-
-        String context = String.join("\n\n", relevantChunks);
-
-        return geminiService.askGemini(context, question);
+    public String askQuestion(MultipartFile file, String question) throws IOException {
+        pdfService.readPdf(file);
+        return pdfService.askQuestion(question);
     }
 }
