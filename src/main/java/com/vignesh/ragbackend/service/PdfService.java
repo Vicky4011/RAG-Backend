@@ -86,17 +86,19 @@ public class PdfService {
 
     public String askQuestion(String question) {
 
-        if (pdfText == null || pdfText.isBlank()) {
-            return "No PDF uploaded.";
-        }
-
-        try {
-            return geminiService.askGemini(pdfText, question);
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-            return "Error while communicating with Gemini.";
-        }
+    if (pdfText == null || pdfText.isBlank()) {
+        throw new IllegalStateException(
+                "No PDF uploaded. Please upload a PDF first."
+        );
     }
+
+    if (question == null || question.isBlank()) {
+        throw new IllegalArgumentException(
+                "Question cannot be empty."
+        );
+    }
+
+    return geminiService.askGemini(pdfText, question);
+}
 
 }
